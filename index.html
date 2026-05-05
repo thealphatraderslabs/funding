@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funding Rate Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --dim: #3a3a4a;
+    --green: #00e5a0;
+    --green-dim: rgba(0,229,160,0.1);
+    --green-border: rgba(0,229,160,0.25);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.1);
+    --red-border: rgba(255,77,106,0.25);
+    --amber: #ffb340;
+    --blue: #4d9fff;
+    --font-mono: 'Space Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .brand { display: flex; flex-direction: column; gap: 4px; }
+  .brand-title {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-title .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .brand-sub { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; }
+
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .threshold-group {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 6px 12px;
+  }
+  .threshold-group label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .threshold-group input {
+    width: 60px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--amber);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-align: right;
+  }
+  .threshold-group span { font-size: 11px; color: var(--muted); }
+
+  .btn {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover { background: var(--surface2); border-color: rgba(255,255,255,0.2); }
+  .btn.active { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); color: #fff; }
+  .btn.pos.active { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
+  .btn.neg.active { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
+  .btn-refresh {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-refresh:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .btn-refresh svg { transition: transform 0.4s; }
+  .btn-refresh.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* STAT CARDS */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.total::before { background: var(--dim); }
+  .stat-card.pos-card::before { background: var(--green); }
+  .stat-card.neg-card::before { background: var(--red); }
+  .stat-card.ex-card::before { background: var(--blue); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .stat-val { font-family: var(--font-mono); font-size: 28px; font-weight: 700; }
+  .stat-val.pos { color: var(--green); }
+  .stat-val.neg { color: var(--red); }
+  .stat-val.tot { color: #fff; }
+  .stat-val.blue { color: var(--blue); }
+
+  /* FILTERS ROW */
+  .filters-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .filter-btns { display: flex; gap: 6px; }
+  .meta-row { display: flex; align-items: center; gap: 14px; }
+  .updated-text { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .result-count { font-size: 12px; color: var(--muted); }
+
+  /* SEARCH */
+  .search-input {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    width: 160px;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: rgba(255,255,255,0.25); }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+  }
+  th {
+    padding: 11px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-align: left;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  th.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
+  th.sortable:hover { color: var(--text); }
+  th.sort-active { color: var(--text); }
+  .sort-icon { margin-left: 4px; opacity: 0.5; font-size: 10px; }
+  .sort-icon.active { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    animation: rowIn 0.25s ease both;
+  }
+  @keyframes rowIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 10px 16px; vertical-align: middle; }
+
+  .coin-cell { display: flex; align-items: center; gap: 10px; }
+  .coin-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .coin-name { font-weight: 600; font-size: 13px; color: #fff; }
+  .coin-full { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .exchange-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.5px;
+  }
+  .ex-binance { background: rgba(255,179,64,0.12); color: var(--amber); border: 1px solid rgba(255,179,64,0.2); }
+  .ex-bybit { background: rgba(77,159,255,0.12); color: var(--blue); border: 1px solid rgba(77,159,255,0.2); }
+
+  .type-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.3px;
+  }
+  .type-futures { background: rgba(238,237,254,0.06); color: #AFA9EC; border: 1px solid rgba(175,169,236,0.2); }
+  .type-spot { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border); }
+
+  .rate-cell { display: flex; align-items: center; gap: 10px; }
+  .rate-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 80px;
+  }
+  .rate-val.pos { color: var(--green); }
+  .rate-val.neg { color: var(--red); }
+  .rate-bar-bg {
+    flex: 1; height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 60px;
+    max-width: 100px;
+  }
+  .rate-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+  .bar-pos { background: var(--green); box-shadow: 0 0 6px rgba(0,229,160,0.4); }
+  .bar-neg { background: var(--red); box-shadow: 0 0 6px rgba(255,77,106,0.4); }
+
+  .price-val { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+  /* EMPTY / LOADING / ERROR */
+  .status-row td {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .error-bar {
+    background: var(--red-dim);
+    border: 1px solid var(--red-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--red);
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  /* EXCHANGE TOGGLE */
+  .ex-toggles { display: flex; gap: 6px; }
+  .ex-toggle {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .ex-toggle.binance { color: var(--amber); }
+  .ex-toggle.binance.on { background: rgba(255,179,64,0.12); border-color: rgba(255,179,64,0.3); }
+  .ex-toggle.binance.off { color: var(--muted); }
+  .ex-toggle.bybit { color: var(--blue); }
+  .ex-toggle.bybit.on { background: rgba(77,159,255,0.12); border-color: rgba(77,159,255,0.3); }
+  .ex-toggle.bybit.off { color: var(--muted); }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-title"><span class="dot"></span> FUNDING SCANNER</div>
+      <div class="brand-sub">BINANCE + BYBIT · REAL-TIME FUNDING RATES</div>
+    </div>
+    <div class="header-right">
+      <div class="threshold-group">
+        <label>POS THRESHOLD</label>
+        <input type="number" id="threshold" value="0.03" step="0.01" min="0.001" max="5" />
+        <span>%</span>
+      </div>
+      <div class="ex-toggles">
+        <button class="ex-toggle binance on" id="toggle-binance" onclick="toggleExchange('binance')">BINANCE</button>
+        <button class="ex-toggle bybit on" id="toggle-bybit" onclick="toggleExchange('bybit')">BYBIT</button>
+      </div>
+      <button class="btn-refresh" id="refresh-btn" onclick="fetchAll()">
+        <svg id="refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        REFRESH
+      </button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card total">
+      <div class="stat-label">Signals Found</div>
+      <div class="stat-val tot" id="s-total">—</div>
+    </div>
+    <div class="stat-card pos-card">
+      <div class="stat-label">Positive Funding</div>
+      <div class="stat-val pos" id="s-pos">—</div>
+    </div>
+    <div class="stat-card neg-card">
+      <div class="stat-label">Negative Funding</div>
+      <div class="stat-val neg" id="s-neg">—</div>
+    </div>
+    <div class="stat-card ex-card">
+      <div class="stat-label">Top Positive</div>
+      <div class="stat-val blue" id="s-top-pos">—</div>
+    </div>
+    <div class="stat-card neg-card">
+      <div class="stat-label">Top Negative</div>
+      <div class="stat-val neg" id="s-top-neg">—</div>
+    </div>
+  </div>
+
+  <!-- FILTERS ROW -->
+  <div class="filters-row">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="filter-btns">
+        <button class="btn active" id="f-all" onclick="setFilter('all')">All</button>
+        <button class="btn pos" id="f-pos" onclick="setFilter('pos')">Positive</button>
+        <button class="btn neg" id="f-neg" onclick="setFilter('neg')">Negative</button>
+      </div>
+      <input type="text" class="search-input" id="search" placeholder="Search coin..." oninput="renderTable()" />
+    </div>
+    <div class="meta-row">
+      <span class="result-count" id="result-count"></span>
+      <span class="updated-text" id="updated-text"></span>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-bar" id="error-bar"></div>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Coin</th>
+          <th>Exchange</th>
+          <th>Type</th>
+          <th class="sortable sort-active" id="th-rate" onclick="sortBy('rate')">Funding Rate <span class="sort-icon active" id="icon-rate">▼</span></th>
+          <th class="sortable" id="th-abs" onclick="sortBy('abs')">Abs Value <span class="sort-icon" id="icon-abs">↕</span></th>
+          <th>Price (USDT)</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="status-row"><td colspan="6"><span class="spinner"></span> Fetching funding rates...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span>Data: Binance Futures · Bybit Linear Perpetuals</span>
+    <span>Positive threshold filters coins above normal ~0.01% range</span>
+  </div>
+
+</div>
+
+<script>
+  let allData = [];
+  let currentFilter = 'all';
+  let sortKey = 'rate';
+  let sortDir = -1;
+  let showBinance = true;
+  let showBybit = true;
+
+  const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+  async function safeFetch(url) {
+    try {
+      const r = await fetch(CORS_PROXY + encodeURIComponent(url), { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      return await r.json();
+    } catch(e) {
+      console.warn('Failed:', url, e.message);
+      return null;
+    }
+  }
+
+  async function getBinanceFutures() {
+    const [funding, prices] = await Promise.all([
+      safeFetch('https://fapi.binance.com/fapi/v1/fundingRate?limit=1000'),
+      safeFetch('https://fapi.binance.com/fapi/v1/ticker/price')
+    ]);
+    if (!funding) return [];
+
+    const priceMap = {};
+    if (prices) prices.forEach(p => priceMap[p.symbol] = parseFloat(p.price));
+
+    // Get latest funding rate per symbol
+    const latestMap = {};
+    funding.forEach(f => {
+      const sym = f.symbol;
+      if (!latestMap[sym] || f.fundingTime > latestMap[sym].fundingTime) {
+        latestMap[sym] = f;
+      }
+    });
+
+    return Object.values(latestMap).map(f => ({
+      symbol: f.symbol.replace('USDT','').replace('BUSD',''),
+      fullSymbol: f.symbol,
+      exchange: 'Binance',
+      type: 'Futures',
+      rate: parseFloat(f.fundingRate) * 100,
+      price: priceMap[f.symbol] || null
+    }));
+  }
+
+  async function getBinanceSpotFunding() {
+    // Binance spot doesn't have funding rates, skip
+    return [];
+  }
+
+  async function getBybitFutures() {
+    const data = await safeFetch('https://api.bybit.com/v5/market/tickers?category=linear');
+    if (!data || !data.result || !data.result.list) return [];
+    return data.result.list
+      .filter(t => t.fundingRate !== undefined && t.fundingRate !== '' && t.symbol.endsWith('USDT'))
+      .map(t => ({
+        symbol: t.symbol.replace('USDT',''),
+        fullSymbol: t.symbol,
+        exchange: 'Bybit',
+        type: 'Futures',
+        rate: parseFloat(t.fundingRate) * 100,
+        price: parseFloat(t.lastPrice) || null
+      }));
+  }
+
+  async function getBybitSpot() {
+    // Bybit spot doesn't have funding rates
+    return [];
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-bar');
+    el.style.display = 'block';
+    el.textContent = msg;
+    setTimeout(() => { el.style.display = 'none'; }, 8000);
+  }
+
+  async function fetchAll() {
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('spinning');
+
+    document.getElementById('table-body').innerHTML = '<tr class="status-row"><td colspan="6"><span class="spinner"></span> Fetching from Binance & Bybit...</td></tr>';
+    document.getElementById('error-bar').style.display = 'none';
+
+    try {
+      const [binanceFutures, bybitFutures] = await Promise.all([
+        getBinanceFutures(),
+        getBybitFutures()
+      ]);
+
+      const threshold = parseFloat(document.getElementById('threshold').value) || 0.03;
+
+      const combined = [...binanceFutures, ...bybitFutures];
+
+      // Dedupe: keep per symbol+exchange
+      const seen = new Set();
+      const deduped = combined.filter(c => {
+        const key = c.exchange + ':' + c.fullSymbol;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Filter: negative (any) OR positive above threshold
+      allData = deduped.filter(c => {
+        if (isNaN(c.rate)) return false;
+        if (c.rate < 0) return true;
+        if (c.rate >= threshold) return true;
+        return false;
+      });
+
+      updateStats(threshold);
+      renderTable();
+
+      const now = new Date();
+      document.getElementById('updated-text').textContent =
+        'Updated ' + now.toLocaleTimeString();
+
+      if (allData.length === 0) {
+        showError('No signals found. Try lowering the positive threshold or check your connection.');
+      }
+
+    } catch(e) {
+      showError('Error fetching data: ' + e.message);
+      document.getElementById('table-body').innerHTML = '<tr class="status-row"><td colspan="6">Failed to load data. Check console for details.</td></tr>';
+    }
+
+    btn.classList.remove('spinning');
+  }
+
+  function updateStats(threshold) {
+    const posCoins = allData.filter(c => c.rate > 0);
+    const negCoins = allData.filter(c => c.rate < 0);
+
+    document.getElementById('s-total').textContent = allData.length;
+    document.getElementById('s-pos').textContent = posCoins.length;
+    document.getElementById('s-neg').textContent = negCoins.length;
+
+    const topPos = posCoins.sort((a,b) => b.rate - a.rate)[0];
+    const topNeg = negCoins.sort((a,b) => a.rate - b.rate)[0];
+
+    document.getElementById('s-top-pos').textContent = topPos
+      ? topPos.symbol + ' ' + topPos.rate.toFixed(4) + '%' : '—';
+    document.getElementById('s-top-neg').textContent = topNeg
+      ? topNeg.symbol + ' ' + topNeg.rate.toFixed(4) + '%' : '—';
+  }
+
+  function setFilter(f) {
+    currentFilter = f;
+    ['all','pos','neg'].forEach(id => {
+      const btn = document.getElementById('f-' + id);
+      btn.classList.remove('active');
+    });
+    document.getElementById('f-' + f).classList.add('active');
+    renderTable();
+  }
+
+  function toggleExchange(ex) {
+    if (ex === 'binance') {
+      showBinance = !showBinance;
+      document.getElementById('toggle-binance').className =
+        'ex-toggle binance ' + (showBinance ? 'on' : 'off');
+    } else {
+      showBybit = !showBybit;
+      document.getElementById('toggle-bybit').className =
+        'ex-toggle bybit ' + (showBybit ? 'on' : 'off');
+    }
+    renderTable();
+  }
+
+  function sortBy(key) {
+    if (sortKey === key) {
+      sortDir *= -1;
+    } else {
+      sortKey = key;
+      sortDir = key === 'rate' ? -1 : -1;
+    }
+    ['rate','abs'].forEach(k => {
+      document.getElementById('th-' + k).classList.remove('sort-active');
+      document.getElementById('icon-' + k).textContent = '↕';
+      document.getElementById('icon-' + k).classList.remove('active');
+    });
+    document.getElementById('th-' + key).classList.add('sort-active');
+    document.getElementById('icon-' + key).textContent = sortDir === -1 ? '▼' : '▲';
+    document.getElementById('icon-' + key).classList.add('active');
+    renderTable();
+  }
+
+  function renderTable() {
+    const search = document.getElementById('search').value.trim().toLowerCase();
+    const threshold = parseFloat(document.getElementById('threshold').value) || 0.03;
+
+    let data = allData.filter(c => {
+      if (!showBinance && c.exchange === 'Binance') return false;
+      if (!showBybit && c.exchange === 'Bybit') return false;
+      if (currentFilter === 'pos' && c.rate <= 0) return false;
+      if (currentFilter === 'neg' && c.rate >= 0) return false;
+      if (search && !c.symbol.toLowerCase().includes(search) && !c.fullSymbol.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    data.sort((a, b) => {
+      let av = sortKey === 'abs' ? Math.abs(a.rate) : a.rate;
+      let bv = sortKey === 'abs' ? Math.abs(b.rate) : b.rate;
+      return sortDir * (bv - av);
+    });
+
+    document.getElementById('result-count').textContent = data.length + ' coins';
+
+    if (data.length === 0) {
+      document.getElementById('table-body').innerHTML =
+        '<tr class="status-row"><td colspan="6">No coins match current filters.</td></tr>';
+      return;
+    }
+
+    // Max abs rate for bar scaling
+    const maxAbs = Math.max(...data.map(c => Math.abs(c.rate)), 0.01);
+
+    const rows = data.map((c, i) => {
+      const isPos = c.rate > 0;
+      const rateClass = isPos ? 'pos' : 'neg';
+      const barClass = isPos ? 'bar-pos' : 'bar-neg';
+      const barPct = Math.min((Math.abs(c.rate) / maxAbs) * 100, 100).toFixed(1);
+      const exClass = c.exchange === 'Binance' ? 'ex-binance' : 'ex-bybit';
+      const typeClass = c.type === 'Futures' ? 'type-futures' : 'type-spot';
+      const initials = c.symbol.slice(0,3).toUpperCase();
+      const price = c.price ? (c.price >= 1 ? c.price.toLocaleString(undefined,{maximumFractionDigits:2}) : c.price.toFixed(6)) : '—';
+      const rateSign = isPos ? '+' : '';
+
+      return `<tr style="animation-delay:${i*0.02}s">
+        <td>
+          <div class="coin-cell">
+            <div class="coin-icon">${initials}</div>
+            <div>
+              <div class="coin-name">${c.symbol}</div>
+              <div class="coin-full">${c.fullSymbol}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="exchange-badge ${exClass}">${c.exchange.toUpperCase()}</span></td>
+        <td><span class="type-badge ${typeClass}">${c.type}</span></td>
+        <td>
+          <div class="rate-cell">
+            <span class="rate-val ${rateClass}">${rateSign}${c.rate.toFixed(4)}%</span>
+            <div class="rate-bar-bg"><div class="rate-bar ${barClass}" style="width:${barPct}%"></div></div>
+          </div>
+        </td>
+        <td><span class="rate-val" style="color:var(--muted)">${Math.abs(c.rate).toFixed(4)}%</span></td>
+        <td><span class="price-val">${price}</span></td>
+      </tr>`;
+    });
+
+    document.getElementById('table-body').innerHTML = rows.join('');
+  }
+
+  // Auto-refresh on threshold change
+  document.getElementById('threshold').addEventListener('change', () => {
+    const threshold = parseFloat(document.getElementById('threshold').value) || 0.03;
+    const posCoins = allData.filter(c => c.rate >= threshold);
+    const negCoins = allData.filter(c => c.rate < 0);
+    allData = [...posCoins, ...negCoins];
+    // Re-fetch to re-filter properly
+    fetchAll();
+  });
+
+  // Initial load
+  fetchAll();
+</script>
+</body>
+</html>

@@ -291,12 +291,168 @@ body {
 @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 tbody tr { animation:fadeIn 0.2s ease both; }
 
-@media (max-width:900px) {
-  .main-content { padding:12px; }
-  .header { padding:0 12px; }
+/* ── MOBILE CARD LAYOUT ── */
+@media (max-width:768px) {
+  .main-content { padding:10px 12px; }
+  .header { padding:0 12px; height:50px; }
   .header-sub { display:none; }
-  .stats-row { grid-template-columns:1fr 1fr; }
-  .exchange-panel { flex-wrap:wrap; }
+  .header-time { font-size:0.75rem; min-width:60px; }
+  .logo { font-size:0.9rem; letter-spacing:3px; }
+
+  /* Exchange panel */
+  .exchange-panel { flex-wrap:wrap; gap:10px; padding:12px 14px; }
+  .ex-selector { flex:1; }
+  .ex-select-btn { flex:1; padding:10px 8px; font-size:0.55rem; letter-spacing:1px; }
+  .scan-btn { width:100%; justify-content:center; padding:10px; font-size:0.6rem; }
+
+  /* Active strip */
+  .active-ex-strip { gap:6px; font-size:0.58rem; }
+  .strip-info { display:none; }
+
+  /* Controls bar */
+  .controls-bar { gap:8px; }
+  .controls-group { flex:1; }
+  .threshold-input { width:48px; }
+  .filter-group { flex:1; justify-content:space-between; }
+  .filter-btn { padding:6px 8px; font-size:0.65rem; flex:1; text-align:center; }
+  .search-wrapper { width:100%; }
+  .search-input { width:100%; }
+
+  /* Stats */
+  .stats-row { grid-template-columns:1fr 1fr; gap:8px; }
+  .stat-val { font-size:1.3rem; }
+  .stat-val.gold { font-size:0.78rem; }
+
+  /* Hide desktop table, show mobile cards */
+  .table-wrapper { background:transparent; border:none; box-shadow:none; border-radius:0; overflow:visible; }
+  .scanner-table { display:none; }
+  .mobile-cards { display:flex; flex-direction:column; gap:8px; }
+
+  /* Footer */
+  .footer { flex-direction:column; gap:6px; text-align:center; padding:12px; }
+}
+
+/* Mobile card styles (always defined, only shown on mobile) */
+.mobile-cards { display:none; }
+
+.m-card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  animation:fadeIn 0.2s ease both;
+  position:relative;
+  overflow:hidden;
+}
+.m-card::before {
+  content:'';
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:3px;
+}
+.m-card.m-pos::before { background:var(--bull); }
+.m-card.m-neg::before { background:var(--bear); }
+
+.m-card-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.m-coin-left {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:1;
+  min-width:0;
+}
+.m-coin-icon {
+  width:36px; height:36px;
+  border-radius:50%;
+  background:var(--bg-elevated);
+  border:1px solid var(--border-bright);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-size:7px;
+  font-weight:700; color:var(--text-dim);
+  flex-shrink:0;
+}
+.m-coin-sym {
+  font-family:var(--font-display);
+  font-size:0.85rem; font-weight:700;
+  color:var(--accent); letter-spacing:1.5px;
+}
+.m-coin-full {
+  font-family:var(--font-mono);
+  font-size:0.58rem; color:var(--text-dim);
+  letter-spacing:0.5px; margin-top:1px;
+}
+.m-rate-right {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:3px;
+  flex-shrink:0;
+}
+.m-rate-val {
+  font-family:var(--font-display);
+  font-size:1.05rem; font-weight:700;
+  letter-spacing:1px;
+}
+.m-rate-val.pos { color:var(--bull); text-shadow:0 0 10px rgba(0,230,118,0.3); }
+.m-rate-val.neg { color:var(--bear); text-shadow:0 0 10px rgba(255,61,87,0.3); }
+.m-abs-val {
+  font-family:var(--font-mono);
+  font-size:0.6rem; color:var(--text-secondary);
+}
+
+.m-card-bottom {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.m-bar-wrap {
+  flex:1;
+  height:4px;
+  background:var(--bg-elevated);
+  border-radius:2px;
+  overflow:hidden;
+  border:1px solid var(--border);
+}
+.m-bar {
+  height:100%;
+  border-radius:2px;
+  transition:width 0.5s ease;
+}
+.m-bar.bar-pos { background:var(--bull); box-shadow:0 0 6px rgba(0,230,118,0.5); }
+.m-bar.bar-neg { background:var(--bear); box-shadow:0 0 6px rgba(255,61,87,0.5); }
+
+.m-meta {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.m-price {
+  font-family:var(--font-mono);
+  font-size:0.65rem; color:var(--text-secondary);
+}
+.m-signal { font-family:var(--font-mono); font-size:0.52rem; letter-spacing:1px; padding:2px 7px; border-radius:2px; }
+
+.m-empty {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:60px 20px; gap:12px;
+}
+.m-empty-icon { font-size:2rem; opacity:0.12; }
+.m-empty-title { font-family:var(--font-display); font-size:0.7rem; letter-spacing:3px; color:var(--text-dim); }
+.m-empty-sub   { font-family:var(--font-mono); font-size:0.58rem; color:var(--text-dim); opacity:0.5; }
+
+@media (max-width:768px) {
+  .mobile-cards { display:flex; }
 }
 </style>
 </head>
@@ -428,6 +584,15 @@ tbody tr { animation:fadeIn 0.2s ease both; }
     </table>
   </div>
 
+  <!-- MOBILE CARD VIEW (shown on mobile, hidden on desktop) -->
+  <div class="mobile-cards" id="mobile-cards">
+    <div class="m-empty">
+      <div class="m-empty-icon">◎</div>
+      <div class="m-empty-title">AWAITING EXCHANGE SELECTION</div>
+      <div class="m-empty-sub">Select an exchange above, then press SCAN</div>
+    </div>
+  </div>
+
 </main>
 
 <footer class="footer">
@@ -496,13 +661,20 @@ function resetResults() {
     b.className = 'filter-btn' + (id === 'all' ? ' active-all' : '');
   });
 
-  document.getElementById('table-body').innerHTML = `<tr><td colspan="7">
-    <div class="idle-state">
-      <div class="idle-icon">◎</div>
-      <div class="idle-title">EXCHANGE SWITCHED</div>
-      <div class="idle-sub">Press SCAN to load data</div>
-    </div>
-  </td></tr>`;
+  const idleHtml = `<div class="idle-state">
+    <div class="idle-icon">◎</div>
+    <div class="idle-title">EXCHANGE SWITCHED</div>
+    <div class="idle-sub">Press SCAN to load data</div>
+  </div>`;
+
+  document.getElementById('table-body').innerHTML = `<tr><td colspan="7">${idleHtml}</td></tr>`;
+
+  const mc = document.getElementById('mobile-cards');
+  if (mc) mc.innerHTML = `<div class="m-empty">
+    <div class="m-empty-icon">◎</div>
+    <div class="m-empty-title">EXCHANGE SWITCHED</div>
+    <div class="m-empty-sub">Press SCAN to load data</div>
+  </div>`;
 }
 
 /* ── FETCH HELPERS ── */
@@ -578,6 +750,13 @@ async function runScan() {
   document.getElementById('table-head').style.display = 'none';
   document.getElementById('table-body').innerHTML =
     `<tr class="state-row"><td colspan="7"><span class="${loaderCls}"></span>FETCHING ${selectedEx.toUpperCase()} DATA...</td></tr>`;
+
+  // Mobile loading state
+  const mc = document.getElementById('mobile-cards');
+  if (mc) mc.innerHTML = `<div class="m-empty">
+    <div class="m-empty-icon" style="opacity:0.4;animation:spin 1s linear infinite;display:inline-block;">⟳</div>
+    <div class="m-empty-title">FETCHING ${selectedEx.toUpperCase()}...</div>
+  </div>`;
 
   // Fetch only the selected exchange
   let rawData = selectedEx === 'binance' ? await getBinance() : await getBybit();
@@ -703,20 +882,76 @@ function renderTable() {
   document.getElementById('result-count').textContent =
     data.length + ' COINS · ' + pos + ' POSITIVE · ' + neg + ' NEGATIVE';
 
-  if (!data.length) {
-    document.getElementById('table-body').innerHTML =
-      '<tr class="state-row"><td colspan="7">NO COINS MATCH CURRENT FILTERS</td></tr>';
-    return;
-  }
-
   const maxAbs = Math.max(...data.map(c => Math.abs(c.rate)), 0.001);
   const exCls  = selectedEx === 'binance' ? 'ex-binance' : 'ex-bybit';
   const exLbl  = selectedEx === 'binance' ? 'BINANCE' : 'BYBIT';
 
-  const rows = data.map((c, i) => {
+  // ── DESKTOP TABLE ──
+  if (!data.length) {
+    document.getElementById('table-body').innerHTML =
+      '<tr class="state-row"><td colspan="7">NO COINS MATCH CURRENT FILTERS</td></tr>';
+  } else {
+    const rows = data.map((c, i) => {
+      const isPos    = c.rate > 0;
+      const rateCls  = isPos ? 'pos' : 'neg';
+      const barCls   = isPos ? 'bar-pos' : 'bar-neg';
+      const barPct   = Math.min((Math.abs(c.rate) / maxAbs) * 100, 100).toFixed(1);
+      const sign     = isPos ? '+' : '';
+      const initials = c.symbol.slice(0,3).toUpperCase();
+      const price    = c.price
+        ? (c.price >= 1
+            ? c.price.toLocaleString('en-US',{maximumFractionDigits:2})
+            : c.price.toFixed(6))
+        : '—';
+      const sig = getSignal(c.rate, threshold);
+      return `<tr style="animation-delay:${i * 0.012}s">
+        <td>
+          <div class="coin-cell">
+            <div class="coin-icon">${initials}</div>
+            <div>
+              <div class="coin-sym">${c.symbol}</div>
+              <div class="coin-full">${c.fullSym}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="ex-badge ${exCls}">${exLbl}</span></td>
+        <td><span class="type-badge type-futures">FUTURES</span></td>
+        <td>
+          <div class="rate-cell">
+            <span class="rate-val ${rateCls}">${sign}${c.rate.toFixed(4)}%</span>
+            <div class="rate-bar-bg"><div class="rate-bar ${barCls}" style="width:${barPct}%"></div></div>
+          </div>
+        </td>
+        <td><span class="rate-val muted">${Math.abs(c.rate).toFixed(4)}%</span></td>
+        <td><span class="signal-badge ${sig.cls}">${sig.label}</span></td>
+        <td><span class="price-val">${price}</span></td>
+      </tr>`;
+    });
+    document.getElementById('table-body').innerHTML = rows.join('');
+  }
+
+  // ── MOBILE CARDS ──
+  renderMobileCards(data, maxAbs, threshold);
+}
+
+function renderMobileCards(data, maxAbs, threshold) {
+  const container = document.getElementById('mobile-cards');
+  if (!container) return;
+
+  if (!data.length) {
+    container.innerHTML = `<div class="m-empty">
+      <div class="m-empty-icon">◎</div>
+      <div class="m-empty-title">NO COINS MATCH FILTERS</div>
+      <div class="m-empty-sub">Try adjusting threshold or filter</div>
+    </div>`;
+    return;
+  }
+
+  const cards = data.map((c, i) => {
     const isPos    = c.rate > 0;
     const rateCls  = isPos ? 'pos' : 'neg';
     const barCls   = isPos ? 'bar-pos' : 'bar-neg';
+    const cardCls  = isPos ? 'm-pos' : 'm-neg';
     const barPct   = Math.min((Math.abs(c.rate) / maxAbs) * 100, 100).toFixed(1);
     const sign     = isPos ? '+' : '';
     const initials = c.symbol.slice(0,3).toUpperCase();
@@ -726,31 +961,33 @@ function renderTable() {
           : c.price.toFixed(6))
       : '—';
     const sig = getSignal(c.rate, threshold);
-    return `<tr style="animation-delay:${i * 0.012}s">
-      <td>
-        <div class="coin-cell">
-          <div class="coin-icon">${initials}</div>
+    return `<div class="m-card ${cardCls}" style="animation-delay:${i * 0.01}s">
+      <div class="m-card-top">
+        <div class="m-coin-left">
+          <div class="m-coin-icon">${initials}</div>
           <div>
-            <div class="coin-sym">${c.symbol}</div>
-            <div class="coin-full">${c.fullSym}</div>
+            <div class="m-coin-sym">${c.symbol}</div>
+            <div class="m-coin-full">${c.fullSym}</div>
           </div>
         </div>
-      </td>
-      <td><span class="ex-badge ${exCls}">${exLbl}</span></td>
-      <td><span class="type-badge type-futures">FUTURES</span></td>
-      <td>
-        <div class="rate-cell">
-          <span class="rate-val ${rateCls}">${sign}${c.rate.toFixed(4)}%</span>
-          <div class="rate-bar-bg"><div class="rate-bar ${barCls}" style="width:${barPct}%"></div></div>
+        <div class="m-rate-right">
+          <span class="m-rate-val ${rateCls}">${sign}${c.rate.toFixed(4)}%</span>
+          <span class="m-abs-val">ABS ${Math.abs(c.rate).toFixed(4)}%</span>
         </div>
-      </td>
-      <td><span class="rate-val muted">${Math.abs(c.rate).toFixed(4)}%</span></td>
-      <td><span class="signal-badge ${sig.cls}">${sig.label}</span></td>
-      <td><span class="price-val">${price}</span></td>
-    </tr>`;
+      </div>
+      <div class="m-card-bottom">
+        <div class="m-bar-wrap">
+          <div class="m-bar ${barCls}" style="width:${barPct}%"></div>
+        </div>
+        <div class="m-meta">
+          <span class="price-val m-price">$${price}</span>
+          <span class="signal-badge m-signal ${sig.cls}">${sig.label}</span>
+        </div>
+      </div>
+    </div>`;
   });
 
-  document.getElementById('table-body').innerHTML = rows.join('');
+  container.innerHTML = cards.join('');
 }
 
 /* ── THRESHOLD CHANGE → RESCAN ── */

@@ -1110,11 +1110,13 @@ function pScoreAsset(a) {
   const isPos = a.funding > 0;
 
   // ── Signal 1: Funding (±30)
+  // Positive funding = longs overextended, paying shorts = SHORT opportunity
+  // Negative funding = shorts overextended, paying longs = LONG opportunity
   let fS = 0;
-  if      (absF > 0.2)  fS = isPos ?  30 : -30;
-  else if (absF > 0.1)  fS = isPos ?  24 : -24;
-  else if (absF > 0.05) fS = isPos ?  18 : -18;
-  else if (absF > 0.03) fS = isPos ?  10 : -10;
+  if      (absF > 0.2)  fS = isPos ? -30 :  30;
+  else if (absF > 0.1)  fS = isPos ? -24 :  24;
+  else if (absF > 0.05) fS = isPos ? -18 :  18;
+  else if (absF > 0.03) fS = isPos ? -10 :  10;
   score += fS;
   sigs.push({label:'FUNDING', raw:(a.funding>=0?'+':'')+a.funding.toFixed(4)+'%',
     pts:fS, max:30, cls:fS>0?'pos':fS<0?'neg':'neu'});
@@ -1125,12 +1127,14 @@ function pScoreAsset(a) {
     const buy = a.lsRatio.buyRatio, sell = a.lsRatio.sellRatio;
     lsRaw = (buy*100).toFixed(1)+'% L / '+(sell*100).toFixed(1)+'% S';
     const dominance = buy - sell; // positive = longs dominant
-    if      (dominance > 0.15) lsS = isPos ?  25 : -10;
-    else if (dominance > 0.08) lsS = isPos ?  15 :  -6;
-    else if (dominance > 0.02) lsS = isPos ?   8 :  -3;
-    else if (dominance < -0.15) lsS = isPos ? -10 :  25;
-    else if (dominance < -0.08) lsS = isPos ?  -6 :  15;
-    else if (dominance < -0.02) lsS = isPos ?  -3 :   8;
+    // Positive funding + longs dominant = crowded long = confirms SHORT setup
+    // Negative funding + shorts dominant = crowded short = confirms LONG setup
+    if      (dominance > 0.15) lsS = isPos ? -10 :  25;
+    else if (dominance > 0.08) lsS = isPos ?  -6 :  15;
+    else if (dominance > 0.02) lsS = isPos ?  -3 :   8;
+    else if (dominance < -0.15) lsS = isPos ?  25 : -10;
+    else if (dominance < -0.08) lsS = isPos ?  15 :  -6;
+    else if (dominance < -0.02) lsS = isPos ?   8 :  -3;
   }
   score += lsS;
   sigs.push({label:'L/S RATIO', raw:lsRaw,
@@ -1141,15 +1145,18 @@ function pScoreAsset(a) {
   if (a.oi > 0 && a.vol24h > 0) {
     const voi = a.vol24h / a.oi;
     oiRaw = 'V/OI: '+voi.toFixed(2)+'x';
+    // Positive funding: high V/OI = longs very active = crowded = SHORT conviction
+    // Negative funding: high V/OI = shorts very active = crowded = LONG conviction
     if (isPos) {
-      if      (voi > 4)   { oiS =  20; oiRaw += ' HIGH CONV'; }
+      if      (voi > 4)   { oiS = -20; oiRaw += ' CROWDED LONG'; }
+      else if (voi > 2)   { oiS = -12; oiRaw += ' MODERATE'; }
+      else if (voi > 0.5) { oiS =  -6; oiRaw += ' LOW TURN'; }
+      else                { oiS =  10; oiRaw += ' STAGNANT'; }
+    } else {
+      if      (voi > 4)   { oiS =  20; oiRaw += ' CROWDED SHORT'; }
       else if (voi > 2)   { oiS =  12; oiRaw += ' MODERATE'; }
       else if (voi > 0.5) { oiS =   6; oiRaw += ' LOW TURN'; }
       else                { oiS = -10; oiRaw += ' STAGNANT'; }
-    } else {
-      if      (voi > 4)   { oiS =  15; oiRaw += ' SHORT CHURN'; }
-      else if (voi > 2)   { oiS =   7; oiRaw += ' MODERATE'; }
-      else                { oiS = -15; oiRaw += ' HEAVY SHORT'; }
     }
   } else if (a.oi === 0) {
     oiRaw = 'N/A';
@@ -1176,10 +1183,12 @@ function pScoreAsset(a) {
   if (a.exchange === 'Binance' && a.takerFlow) {
     const bsr = a.takerFlow.buySellRatio;
     s5Raw = 'B/S: '+bsr.toFixed(3);
-    if      (bsr > 1.3) { s5 = isPos ?  10 :  -5; s5Raw += ' AGG BUY'; }
-    else if (bsr > 1.1) { s5 = isPos ?   5 :  -2; s5Raw += ' BUY LEAN'; }
-    else if (bsr < 0.7) { s5 = isPos ?  -5 :  10; s5Raw += ' AGG SELL'; }
-    else if (bsr < 0.9) { s5 = isPos ?  -2 :   5; s5Raw += ' SELL LEAN'; }
+    // Aggressive buying + positive funding = longs piling in more = SHORT confirmation
+    // Aggressive selling + negative funding = shorts piling in more = LONG confirmation
+    if      (bsr > 1.3) { s5 = isPos ?  -10 :   5; s5Raw += ' AGG BUY'; }
+    else if (bsr > 1.1) { s5 = isPos ?   -5 :   2; s5Raw += ' BUY LEAN'; }
+    else if (bsr < 0.7) { s5 = isPos ?    5 : -10; s5Raw += ' AGG SELL'; }
+    else if (bsr < 0.9) { s5 = isPos ?    2 :  -5; s5Raw += ' SELL LEAN'; }
   } else if (a.exchange === 'Bybit' && a.markPrice > 0 && a.indexPrice > 0) {
     const basis = ((a.markPrice - a.indexPrice) / a.indexPrice)*100;
     s5Raw = (basis>=0?'+':'')+basis.toFixed(3)+'%';
@@ -1193,15 +1202,17 @@ function pScoreAsset(a) {
     pts:s5, max:10, cls:s5>0?'pos':s5<0?'neg':'neu'});
 
   // ── Outcome classification
+  // score > 0 = LONG opportunity (negative funding, shorts overextended)
+  // score < 0 = SHORT opportunity (positive funding, longs overextended)
   const absF2 = Math.abs(a.funding);
   const isExtremePos = a.funding > 0.08;
   const isExtremeNeg = a.funding < -0.08;
   let bias, biasLabel, biasCls, tileCls, scoreFillCls;
 
-  if (isExtremePos && score < 30) {
+  if (isExtremePos && score > -30) {
     bias='hot'; biasLabel='OVERHEATED'; biasCls='bb-hot'; tileCls='bias-hot'; scoreFillCls='sf-hot';
-  } else if (isExtremeNeg && score < 0) {
-    bias='hot'; biasLabel='DISTRIBUTION'; biasCls='bb-hot'; tileCls='bias-hot'; scoreFillCls='sf-hot';
+  } else if (isExtremeNeg && score > 0) {
+    bias='hot'; biasLabel='SQUEEZE RISK'; biasCls='bb-hot'; tileCls='bias-hot'; scoreFillCls='sf-hot';
   } else if (score >= 30) {
     bias='long'; biasLabel='LONG BIAS'; biasCls='bb-long'; tileCls='bias-long'; scoreFillCls='sf-long';
   } else if (score <= -20) {

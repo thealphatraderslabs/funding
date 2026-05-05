@@ -457,55 +457,75 @@
   let showBinance = true;
   let showBybit = true;
 
-  const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+  // Binance needs a proxy (no CORS headers on fapi)
+  // Try multiple proxies in order until one works
+  const PROXIES = [
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://thingproxy.freeboard.io/fetch/'
+  ];
 
-  async function safeFetch(url) {
-    try {
-      const r = await fetch(CORS_PROXY + encodeURIComponent(url), { cache: 'no-store' });
-      if (!r.ok) throw new Error(r.status);
-      return await r.json();
-    } catch(e) {
-      console.warn('Failed:', url, e.message);
-      return null;
+  async function safeFetch(url, direct = false) {
+    // Try direct first (works for Bybit which has CORS headers)
+    if (direct) {
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.json();
+      } catch(e) {
+        console.warn('Direct failed:', url, e.message);
+        return null;
+      }
     }
+    // Try each proxy for Binance
+    for (const proxy of PROXIES) {
+      try {
+        const r = await fetch(proxy + encodeURIComponent(url), { cache: 'no-store' });
+        if (!r.ok) continue;
+        const text = await r.text();
+        // Some proxies wrap in {contents:"..."} 
+        try {
+          const json = JSON.parse(text);
+          // unwrap allorigins-style wrapper if present
+          if (json.contents && typeof json.contents === 'string') return JSON.parse(json.contents);
+          return json;
+        } catch(e2) {
+          console.warn('JSON parse failed for proxy', proxy, e2.message);
+          continue;
+        }
+      } catch(e) {
+        console.warn('Proxy failed:', proxy, e.message);
+        continue;
+      }
+    }
+    console.warn('All proxies failed for:', url);
+    return null;
   }
 
   async function getBinanceFutures() {
-    const [funding, prices] = await Promise.all([
-      safeFetch('https://fapi.binance.com/fapi/v1/fundingRate?limit=1000'),
-      safeFetch('https://fapi.binance.com/fapi/v1/ticker/price')
+    // Use /fapi/v1/premiumIndex which has both price AND funding rate in one call
+    const [tickers, fundingInfo] = await Promise.all([
+      safeFetch('https://fapi.binance.com/fapi/v1/premiumIndex'),
+      safeFetch('https://fapi.binance.com/fapi/v1/fundingInfo')
     ]);
-    if (!funding) return [];
 
-    const priceMap = {};
-    if (prices) prices.forEach(p => priceMap[p.symbol] = parseFloat(p.price));
+    if (!tickers) return [];
 
-    // Get latest funding rate per symbol
-    const latestMap = {};
-    funding.forEach(f => {
-      const sym = f.symbol;
-      if (!latestMap[sym] || f.fundingTime > latestMap[sym].fundingTime) {
-        latestMap[sym] = f;
-      }
-    });
-
-    return Object.values(latestMap).map(f => ({
-      symbol: f.symbol.replace('USDT','').replace('BUSD',''),
-      fullSymbol: f.symbol,
-      exchange: 'Binance',
-      type: 'Futures',
-      rate: parseFloat(f.fundingRate) * 100,
-      price: priceMap[f.symbol] || null
-    }));
-  }
-
-  async function getBinanceSpotFunding() {
-    // Binance spot doesn't have funding rates, skip
-    return [];
+    return tickers
+      .filter(t => (t.symbol.endsWith('USDT') || t.symbol.endsWith('BUSD')) && t.lastFundingRate !== undefined)
+      .map(t => ({
+        symbol: t.symbol.replace('USDT','').replace('BUSD',''),
+        fullSymbol: t.symbol,
+        exchange: 'Binance',
+        type: 'Futures',
+        rate: parseFloat(t.lastFundingRate) * 100,
+        price: parseFloat(t.markPrice) || parseFloat(t.indexPrice) || null
+      }));
   }
 
   async function getBybitFutures() {
-    const data = await safeFetch('https://api.bybit.com/v5/market/tickers?category=linear');
+    // Bybit supports CORS directly — no proxy needed
+    const data = await safeFetch('https://api.bybit.com/v5/market/tickers?category=linear', true);
     if (!data || !data.result || !data.result.list) return [];
     return data.result.list
       .filter(t => t.fundingRate !== undefined && t.fundingRate !== '' && t.symbol.endsWith('USDT'))
@@ -517,11 +537,6 @@
         rate: parseFloat(t.fundingRate) * 100,
         price: parseFloat(t.lastPrice) || null
       }));
-  }
-
-  async function getBybitSpot() {
-    // Bybit spot doesn't have funding rates
-    return [];
   }
 
   function showError(msg) {
@@ -543,6 +558,11 @@
         getBinanceFutures(),
         getBybitFutures()
       ]);
+
+      if (binanceFutures.length === 0) showError('⚠ Binance data failed to load (CORS proxy issue). Showing Bybit only.');
+      if (bybitFutures.length === 0) showError('⚠ Bybit data failed to load. Showing Binance only.');
+      if (binanceFutures.length > 0) document.getElementById('toggle-binance').title = `Loaded ${binanceFutures.length} pairs`;
+      if (bybitFutures.length > 0) document.getElementById('toggle-bybit').title = `Loaded ${bybitFutures.length} pairs`;
 
       const threshold = parseFloat(document.getElementById('threshold').value) || 0.03;
 

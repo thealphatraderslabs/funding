@@ -1166,14 +1166,27 @@ function pScoreAsset(a) {
     pts:oiS, max:20, cls:oiS>0?'pos':oiS<0?'neg':'neu'});
 
   // ── Signal 4: Price 24h (±15)
+  // Negative funding + price down = shorts in control, oversold = LONG opportunity scores positive
+  // Positive funding + price up = longs in control, overbought = SHORT opportunity scores negative
   let pS = 0;
   const p24 = a.price24hPct;
-  if      (p24 >  5) pS =  15;
-  else if (p24 >  2) pS =  10;
-  else if (p24 > 0.5) pS =  5;
-  else if (p24 < -5) pS = -15;
-  else if (p24 < -2) pS = -10;
-  else if (p24 < -0.5) pS = -5;
+  if (isPos) {
+    // Positive funding: price up = confirms overbought long = strong SHORT signal
+    if      (p24 >  5) pS = -15;
+    else if (p24 >  2) pS = -10;
+    else if (p24 > 0.5) pS =  -5;
+    else if (p24 < -5) pS =  15;
+    else if (p24 < -2) pS =  10;
+    else if (p24 < -0.5) pS =   5;
+  } else {
+    // Negative funding: price down = confirms oversold short = strong LONG signal
+    if      (p24 < -5) pS =  15;
+    else if (p24 < -2) pS =  10;
+    else if (p24 < -0.5) pS =   5;
+    else if (p24 >  5) pS = -15;
+    else if (p24 >  2) pS = -10;
+    else if (p24 > 0.5) pS =  -5;
+  }
   score += pS;
   sigs.push({label:'PRICE 24H', raw:(p24>=0?'+':'')+p24.toFixed(2)+'%',
     pts:pS, max:15, cls:pS>0?'pos':pS<0?'neg':'neu'});
@@ -1235,14 +1248,14 @@ function pBuildThesis(a, bias, score, sigs) {
   const volStr = a.vol24h > 0 ? '$'+fmtVol(a.vol24h)+' vol' : '';
 
   if (bias === 'long') {
-    return `<strong>LONG BIAS</strong> — Funding ${fStr} signals longs are paying, indicating bullish market conviction. Price ${pStr} 24h confirms trend. ${lsStr}. ${oiStr}${oiStr&&volStr?' · ':''}${volStr}. Multiple signals aligned — continued upside favoured.`;
+    return `<strong>LONG BIAS</strong> — Funding ${fStr} signals shorts are paying longs, indicating bears are overextended. Price ${pStr} 24h confirms upside pressure. ${lsStr}. ${oiStr}${oiStr&&volStr?' · ':''}${volStr}. Short squeeze conditions building — upside favoured.`;
   }
   if (bias === 'short') {
-    return `<strong>SHORT BIAS / SQUEEZE RISK</strong> — Funding ${fStr}: shorts paying longs, bears dominant. ${lsStr}. Price ${pStr} 24h. ${a.exchange==='Bybit'&&a.oi>0?oiStr+' — watch for violent short squeeze reversal.':'Watch for sharp reversal upward.'}`;
+    return `<strong>SHORT BIAS</strong> — Funding ${fStr}: longs are paying shorts, bulls overextended. ${lsStr}. Price ${pStr} 24h. ${a.exchange==='Bybit'&&a.oi>0?oiStr+' — crowded long, watch for long liquidation cascade.':'Downside pressure building — watch for sharp reversal down.'}`;
   }
   if (bias === 'hot') {
-    if (a.funding > 0) return `<strong>OVERHEATED / DISTRIBUTION RISK</strong> — Extreme funding at ${fStr}. Longs paying heavily despite score ${score}. ${lsStr}. Risk of sharp long liquidation cascade. ${volStr}.`;
-    return `<strong>DISTRIBUTION</strong> — Funding ${fStr} extreme negative. ${lsStr}. Price ${pStr}. Shorts may be getting trapped — watch for squeeze.`;
+    if (a.funding > 0) return `<strong>OVERHEATED</strong> — Extreme positive funding at ${fStr}. Longs paying heavily, market severely over-leveraged to upside. ${lsStr}. High risk of long liquidation cascade. ${volStr}.`;
+    return `<strong>SQUEEZE RISK</strong> — Extreme negative funding at ${fStr}. Shorts paying heavily, market severely over-leveraged to downside. ${lsStr}. Price ${pStr}. Violent short squeeze possible — proceed with caution.`;
   }
   return `<strong>MIXED SIGNALS</strong> — Funding ${fStr}, price ${pStr}. ${lsStr}. Signals not aligned (score ${score}). Wait for clearer directional setup before taking a position.`;
 }
